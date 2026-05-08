@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('help')
+        .setName('komande')
         .setDescription('Prikazuje kompletno uputstvo za korišćenje LSPD Bota'),
     async execute(interaction) {
         const embeds = [];
