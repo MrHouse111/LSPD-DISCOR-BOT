@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('disc
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('setup-pravila')
+        .setName('postavi-pravila')
         .setDescription('Postavlja panel sa pravilima LSPD-a u trenutni kanal.'),
     async execute(interaction) {
         const hasRole = interaction.member.roles.cache.some(role => ['director', 'zamenik nacelnika'].includes(role.name.toLowerCase()));

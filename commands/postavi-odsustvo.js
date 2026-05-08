@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('setup-odsustvo')
+        .setName('postavi-odsustvo')
         .setDescription('Postavlja panel za prijavu odsustva u trenutni kanal.'),
     async execute(interaction) {
         const hasRole = interaction.member.roles.cache.some(role => ['director', 'zamenik nacelnika'].includes(role.name.toLowerCase()));

@@ -2,8 +2,8 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('setup-tiketi')
-        .setDescription('Postavlja panel za otvaranje tiketa (podrške).'),
+        .setName('postavi-licne-karte')
+        .setDescription('Postavlja panel za kreiranje ličnih karata'),
     async execute(interaction) {
         const hasRole = interaction.member.roles.cache.some(role => ['director', 'zamenik nacelnika'].includes(role.name.toLowerCase()));
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
@@ -11,21 +11,21 @@ module.exports = {
             return interaction.reply({ content: '❌ Samo Načelnici i Administratori mogu koristiti ovu komandu!', ephemeral: true });
         }
         const embed = new EmbedBuilder()
-            .setColor('#2ecc71') // Zelena boja za podršku
-            .setTitle('📞 LSPD Centar za Podršku')
-            .setDescription('Ukoliko imate problem, žalbu ili pitanje za High Command, kliknite na dugme ispod kako biste otvorili privatni tiket.\n\nMolimo vas da ne otvarate tikete bez razloga, u suprotnom ćete biti sankcionisani.')
-            .setTimestamp()
-            .setFooter({ text: 'LSPD Support System' });
+            .setColor('#0099ff')
+            .setTitle('👮 LSPD Lične Karte')
+            .setDescription('Dobrodošli u LSPD!\n\nKliknite na dugme ispod kako biste kreirali svoju službenu Ličnu Kartu.\nNakon kreiranja, automatski ćete dobiti ulogu **Policajac**.')
+            .setThumbnail(interaction.guild.iconURL());
 
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('open_ticket')
-                    .setLabel('📩 Otvori Tiket')
+                    .setCustomId('btn_licna_karta')
+                    .setLabel('Kreiraj Ličnu Kartu')
                     .setStyle(ButtonStyle.Primary)
+                    .setEmoji('🪪')
             );
 
         await interaction.channel.send({ embeds: [embed], components: [row] });
-        await interaction.reply({ content: 'Panel je uspešno postavljen. NAPOMENA: Ova komanda se koristi isključivo jednokratno prilikom postavljanja panela.', ephemeral: true });
+        await interaction.reply({ content: 'Panel za lične karte je uspešno postavljen.', ephemeral: true });
     },
 };
