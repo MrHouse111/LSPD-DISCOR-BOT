@@ -269,7 +269,32 @@ module.exports = {
 
                 // Slanje u kanal
                 await interaction.channel.send({ embeds: [idEmbed] });
-                
+
+                // Obriši stari panel sa dugmetom i pošalji novi na dno kanala
+                try {
+                    const messages = await interaction.channel.messages.fetch({ limit: 50 });
+                    const oldPanel = messages.find(m => m.author.id === interaction.client.user.id && m.components.length > 0 && m.embeds.length > 0 && m.embeds[0].title === '👮 LSPD Lične Karte');
+                    if (oldPanel) await oldPanel.delete();
+                } catch (e) { /* ignore */ }
+
+                const { ButtonBuilder, ButtonStyle } = require('discord.js');
+                const panelEmbed = new EmbedBuilder()
+                    .setColor('#0099ff')
+                    .setTitle('👮 LSPD Lične Karte')
+                    .setDescription('Dobrodošli u LSPD!\n\nKliknite na dugme ispod kako biste kreirali svoju službenu Ličnu Kartu.\nNakon kreiranja, automatski ćete dobiti ulogu **Policajac**.')
+                    .setThumbnail(interaction.guild.iconURL());
+
+                const panelRow = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('btn_licna_karta')
+                            .setLabel('Kreiraj Ličnu Kartu')
+                            .setStyle(ButtonStyle.Primary)
+                            .setEmoji('🪪')
+                    );
+
+                await interaction.channel.send({ embeds: [panelEmbed], components: [panelRow] });
+
                 return interaction.reply({ content: 'Uspešno ste registrovani i Lična Karta je poslata u kanal!', ephemeral: true });
             }
 
