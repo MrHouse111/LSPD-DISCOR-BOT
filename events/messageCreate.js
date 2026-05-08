@@ -20,6 +20,8 @@ module.exports = {
         // --- PRAĆENJE PORUKA U BAZI ---
         statsStore.addMessage(message.author.id, message.author.username);
 
+        // --- MODERACIJA UGAŠENA (čeka odobrenje načelnika) ---
+        /*
         const content = message.content.toLowerCase();
 
         // --- 1. FILTER PSOVKI ---
@@ -34,14 +36,11 @@ module.exports = {
                     censoredContent = censoredContent.replace(regex, '*'.repeat(word.length));
                 });
 
-                // Cenzurisana poruka
                 await message.channel.send(`**Cenzurisano | ${message.author.username}:** ${censoredContent}`);
 
-                // Upozorenja i mutiranje
                 let warnings = warningsMap.get(message.author.id) || { count: 0, lastWarning: 0 };
                 const now = Date.now();
                 
-                // Resetovanje ako je proslo 1h (3600000 ms)
                 if (now - warnings.lastWarning > 3600000) {
                     warnings.count = 0;
                 }
@@ -54,11 +53,11 @@ module.exports = {
                     try {
                         await message.member.timeout(15 * 60 * 1000, "3 upozorenja zbog psovki");
                         await message.channel.send(`🛑 <@${message.author.id}> je mutiran na 15 minuta zbog ponavljanja psovki (3 upozorenja).`);
-                        warningsMap.delete(message.author.id); // Reset upozorenja posle mutiranja
+                        warningsMap.delete(message.author.id);
                     } catch (err) {
                         console.log('Greska pri mutiranju (verovatno nedostatak permisija):', err);
                         await message.channel.send(`⚠️ <@${message.author.id}> je dostigao 3 upozorenja, ali bot nema dozvolu za mutiranje (Timeout).`);
-                        warnings.count = 0; // Reset da bi se ponovo racunalo
+                        warnings.count = 0;
                         warningsMap.set(message.author.id, warnings);
                     }
                 } else {
@@ -70,14 +69,13 @@ module.exports = {
             } catch (error) {
                 console.log('Greška pri obradi psovki:', error);
             }
-            return; // Prekidamo dalje procesiranje za ovu poruku
+            return;
         }
 
         // --- 2. ANTI-SPAM SISTEM ---
         const now = Date.now();
         const userTimestamps = spamMap.get(message.author.id) || [];
         
-        // Zadrži samo poruke poslate unutar vremenskog prozora (zadnjih 5 sekundi)
         const recentTimestamps = userTimestamps.filter(timestamp => now - timestamp < SPAM_TIME);
         recentTimestamps.push(now);
 
@@ -85,15 +83,12 @@ module.exports = {
 
         if (recentTimestamps.length >= SPAM_LIMIT) {
             try {
-                // Obriši poslednju poruku iz spama
                 await message.delete();
                 
                 const warningMsg = await message.channel.send(`🛑 <@${message.author.id}>, prekinite sa spamovanjem kanala!`);
                 
-                // Resetujemo brojač za ovog korisnika da ne bi spamovao upozorenja
                 spamMap.delete(message.author.id);
 
-                // Obriši upozorenje nakon 5 sekundi
                 setTimeout(() => {
                     warningMsg.delete().catch(() => {});
                 }, 5000);
@@ -101,6 +96,7 @@ module.exports = {
                 console.log('Greška pri brisanju spam poruke:', error);
             }
         }
+        */
 
         // --- 3. AI DISPEČER (Privremeno ugašeno) ---
         /*
