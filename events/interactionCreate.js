@@ -12,63 +12,77 @@ module.exports = {
 
             // Duty System
             if (customId === 'duty_on' || customId === 'duty_off') {
-                const isDutyOn = customId === 'duty_on';
-
-                if (isDutyOn && await dutyStore.isOnDuty(user.id)) {
-                    return interaction.reply({ content: 'Već ste na dužnosti!', ephemeral: true });
-                }
-                if (!isDutyOn && !(await dutyStore.isOnDuty(user.id))) {
-                    return interaction.reply({ content: 'Niste prijavljeni na dužnost!', ephemeral: true });
-                }
-
-                let embed;
-                if (isDutyOn) {
-                    await dutyStore.checkIn(user.id);
-                    embed = new EmbedBuilder()
-                        .setColor('#00ff00')
-                        .setDescription(`🟢 **${interaction.member.displayName}** je stupio/la na dužnost u **${timeString}**.`);
-                } else {
-                    const durationMs = await dutyStore.checkOut(user.id);
-                    const durationMinutes = Math.floor(durationMs / 60000);
-                    const hours = Math.floor(durationMinutes / 60);
-                    const minutes = durationMinutes % 60;
-
-                    embed = new EmbedBuilder()
-                        .setColor('#ff0000')
-                        .setDescription(`🔴 **${interaction.member.displayName}** je odjavio/la dužnost u **${timeString}**.\n\n⏱️ Vreme provedeno na dužnosti: **${hours}h ${minutes}m**.`);
-                }
-
-                // Pošalji log embed na kanal (odgovor na interakciju)
-                await interaction.reply({ embeds: [embed] });
-
-                // Brisanje stare poruke (gde se nalazilo dugme)
                 try {
-                    await interaction.message.delete();
+                    await interaction.deferReply();
+                    const isDutyOn = customId === 'duty_on';
+                    const onDuty = await dutyStore.isOnDuty(user.id);
+
+                    if (isDutyOn && onDuty) {
+                        return interaction.editReply({ content: 'Već ste na dužnosti!' });
+                    }
+                    if (!isDutyOn && !onDuty) {
+                        return interaction.editReply({ content: 'Niste prijavljeni na dužnost!' });
+                    }
+
+                    let embed;
+                    if (isDutyOn) {
+                        await dutyStore.checkIn(user.id);
+                        embed = new EmbedBuilder()
+                            .setColor('#00ff00')
+                            .setDescription(`🟢 **${interaction.member.displayName}** je stupio/la na dužnost u **${timeString}**.`);
+                    } else {
+                        const durationMs = await dutyStore.checkOut(user.id);
+                        const safeDuration = durationMs || 0;
+                        const durationMinutes = Math.floor(safeDuration / 60000);
+                        const hours = Math.floor(durationMinutes / 60);
+                        const minutes = durationMinutes % 60;
+
+                        embed = new EmbedBuilder()
+                            .setColor('#ff0000')
+                            .setDescription(`🔴 **${interaction.member.displayName}** je odjavio/la dužnost u **${timeString}**.\n\n⏱️ Vreme provedeno na dužnosti: **${hours}h ${minutes}m**.`);
+                    }
+
+                    // Pošalji log embed na kanal
+                    await interaction.editReply({ embeds: [embed] });
+
+                    // Brisanje stare poruke (gde se nalazilo dugme)
+                    try {
+                        await interaction.message.delete();
+                    } catch (e) {
+                        // Ignoriši ako je poruka već obrisana
+                    }
+
+                    // Generisanje i slanje novog panela na dno kanala
+                    const { ButtonBuilder, ButtonStyle } = require('discord.js');
+                    const row = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('duty_on')
+                                .setLabel('🟢 Prijava na dužnost')
+                                .setStyle(ButtonStyle.Success),
+                            new ButtonBuilder()
+                                .setCustomId('duty_off')
+                                .setLabel('🔴 Odjava sa dužnosti')
+                                .setStyle(ButtonStyle.Danger),
+                        );
+
+                    const panelEmbed = new EmbedBuilder()
+                        .setColor('#0099ff')
+                        .setTitle('👮 LSPD - Evidencija Dužnosti')
+                        .setDescription('Kliknite na dugme ispod da biste se prijavili ili odjavili sa dužnosti.\n\nSistem automatski beleži vaše vreme i aktivnost.')
+                        .setTimestamp();
+
+                    await interaction.channel.send({ embeds: [panelEmbed], components: [row] });
                 } catch (error) {
-                    // Ignoriši ako je poruka već obrisana
+                    console.error('[DUTY ERROR]', error);
+                    try {
+                        if (interaction.deferred) {
+                            await interaction.editReply({ content: '⚠️ Došlo je do greške sa sistemom dužnosti. Pokušajte ponovo.' });
+                        } else {
+                            await interaction.reply({ content: '⚠️ Došlo je do greške sa sistemom dužnosti. Pokušajte ponovo.', ephemeral: true });
+                        }
+                    } catch (e) { /* ignore */ }
                 }
-
-                // Generisanje i slanje novog panela na dno kanala
-                const { ButtonBuilder, ButtonStyle } = require('discord.js');
-                const row = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('duty_on')
-                            .setLabel('🟢 Prijava na dužnost')
-                            .setStyle(ButtonStyle.Success),
-                        new ButtonBuilder()
-                            .setCustomId('duty_off')
-                            .setLabel('🔴 Odjava sa dužnosti')
-                            .setStyle(ButtonStyle.Danger),
-                    );
-
-                const panelEmbed = new EmbedBuilder()
-                    .setColor('#0099ff')
-                    .setTitle('👮 LSPD - Evidencija Dužnosti')
-                    .setDescription('Kliknite na dugme ispod da biste se prijavili ili odjavili sa dužnosti.\n\nSistem automatski beleži vaše vreme i aktivnost.')
-                    .setTimestamp();
-
-                await interaction.channel.send({ embeds: [panelEmbed], components: [row] });
                 return;
             }
 
