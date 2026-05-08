@@ -14,21 +14,21 @@ module.exports = {
             if (customId === 'duty_on' || customId === 'duty_off') {
                 const isDutyOn = customId === 'duty_on';
 
-                if (isDutyOn && dutyStore.isOnDuty(user.id)) {
+                if (isDutyOn && await dutyStore.isOnDuty(user.id)) {
                     return interaction.reply({ content: 'Već ste na dužnosti!', ephemeral: true });
                 }
-                if (!isDutyOn && !dutyStore.isOnDuty(user.id)) {
+                if (!isDutyOn && !(await dutyStore.isOnDuty(user.id))) {
                     return interaction.reply({ content: 'Niste prijavljeni na dužnost!', ephemeral: true });
                 }
 
                 let embed;
                 if (isDutyOn) {
-                    dutyStore.checkIn(user.id);
+                    await dutyStore.checkIn(user.id);
                     embed = new EmbedBuilder()
                         .setColor('#00ff00')
                         .setDescription(`🟢 **${interaction.member.displayName}** je stupio/la na dužnost u **${timeString}**.`);
                 } else {
-                    const durationMs = dutyStore.checkOut(user.id);
+                    const durationMs = await dutyStore.checkOut(user.id);
                     const durationMinutes = Math.floor(durationMs / 60000);
                     const hours = Math.floor(durationMinutes / 60);
                     const minutes = durationMinutes % 60;
