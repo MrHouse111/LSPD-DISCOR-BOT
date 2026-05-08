@@ -1,7 +1,19 @@
 require('dotenv').config();
 const fs = require('node:fs');
 const path = require('node:path');
+const http = require('node:http');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
+
+// DUMMY SERVER ZA RENDER.COM
+// Render zahteva da Web Services slušaju na nekom portu, inače ubija proces jer misli da je pao.
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('LSPD Bot is running!\n');
+});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`[SERVER] Dummy server sluša na portu ${PORT} za potrebe Render.com health check-a.`);
+});
 
 const client = new Client({
     intents: [
