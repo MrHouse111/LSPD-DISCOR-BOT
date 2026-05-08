@@ -326,6 +326,10 @@ module.exports = {
 
         // Handle Slash Commands
 		if (interaction.isChatInputCommand()) {
+            if (interaction.commandName === 'help') {
+                return interaction.reply({ content: '⚠️ Komanda `/help` je preimenovana! Molimo koristite **`/komande`** iz menija ili samo ukucajte **`!komande`** (ili `/komande`) kao običnu poruku.', ephemeral: true });
+            }
+
             const command = interaction.client.commands.get(interaction.commandName);
 
             if (!command) {
