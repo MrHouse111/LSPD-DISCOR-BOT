@@ -1,5 +1,6 @@
 const { Events, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const dutyStore = require('../utils/dutyStore');
+const statsStore = require('../utils/statsStore');
 
 module.exports = {
 	name: Events.InteractionCreate,
