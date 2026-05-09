@@ -2,7 +2,8 @@ const { db, admin } = require('./firebase');
 
 function getTodayString() {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    // Koristi Europe/Belgrade timezone da datum bude tačan za Srbiju
+    return now.toLocaleDateString('en-CA', { timeZone: 'Europe/Belgrade' }); // Vraća YYYY-MM-DD format
 }
 
 module.exports = {

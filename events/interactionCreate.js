@@ -8,7 +8,7 @@ module.exports = {
         if (interaction.isButton()) {
             const { customId, user } = interaction;
             const now = new Date();
-            const timeString = now.toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' });
+            const timeString = now.toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Belgrade' });
 
             // Duty System
             if (customId === 'duty_on' || customId === 'duty_off') {
