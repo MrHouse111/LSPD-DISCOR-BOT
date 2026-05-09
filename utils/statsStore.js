@@ -18,7 +18,9 @@ module.exports = {
             
             await ref.set({
                 username: username,
-                [`messages.${today}`]: admin.firestore.FieldValue.increment(1)
+                messages: {
+                    [today]: admin.firestore.FieldValue.increment(1)
+                }
             }, { merge: true });
         } catch (error) {
             console.error('[STATS ERROR] Greška pri beleženju poruke:', error.message);
@@ -36,7 +38,9 @@ module.exports = {
             
             await ref.set({
                 username: username,
-                [`voice.${today}`]: admin.firestore.FieldValue.increment(durationMs)
+                voice: {
+                    [today]: admin.firestore.FieldValue.increment(durationMs)
+                }
             }, { merge: true });
         } catch (error) {
             console.error('[STATS ERROR] Greška pri beleženju voice vremena:', error.message);

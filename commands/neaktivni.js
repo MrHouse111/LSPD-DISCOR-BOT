@@ -36,17 +36,37 @@ module.exports = {
             let voiceMs = 0;
             const userStats = allStats[member.user.id];
 
-            if (userStats && userStats.messages) {
-                for (const [dateStr, count] of Object.entries(userStats.messages)) {
-                    if (new Date(dateStr) >= sevenDaysAgo) {
-                        messageCount += count;
+            if (userStats) {
+                // Novi način: userStats.messages je objekat
+                if (userStats.messages && typeof userStats.messages === 'object') {
+                    for (const [dateStr, count] of Object.entries(userStats.messages)) {
+                        if (new Date(dateStr) >= sevenDaysAgo) {
+                            messageCount += count;
+                        }
                     }
                 }
-            }
-            if (userStats && userStats.voice) {
-                for (const [dateStr, durationMs] of Object.entries(userStats.voice)) {
-                    if (new Date(dateStr) >= sevenDaysAgo) {
-                        voiceMs += durationMs;
+                
+                // Novi način: userStats.voice je objekat
+                if (userStats.voice && typeof userStats.voice === 'object') {
+                    for (const [dateStr, durationMs] of Object.entries(userStats.voice)) {
+                        if (new Date(dateStr) >= sevenDaysAgo) {
+                            voiceMs += durationMs;
+                        }
+                    }
+                }
+
+                // Stari način: literalni ključevi "messages.YYYY-MM-DD" u root-u
+                for (const [key, value] of Object.entries(userStats)) {
+                    if (key.startsWith('messages.')) {
+                        const dateStr = key.substring(9);
+                        if (new Date(dateStr) >= sevenDaysAgo) {
+                            messageCount += value;
+                        }
+                    } else if (key.startsWith('voice.')) {
+                        const dateStr = key.substring(6);
+                        if (new Date(dateStr) >= sevenDaysAgo) {
+                            voiceMs += value;
+                        }
                     }
                 }
             }
