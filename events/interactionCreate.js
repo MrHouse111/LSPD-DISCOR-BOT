@@ -354,10 +354,14 @@ module.exports = {
                     await interaction.update({ embeds: [confirmEmbed], components: [] });
                 } catch (err) {
                     console.error('[OTKAZ ERROR]', err);
+                    const isPermError = err.code === 50013 || err.message?.includes('Missing Permissions');
+                    const errMsg = isPermError
+                        ? '❌ **Nedostaju dozvole!**\n\nBot ne može da kickuje ovog korisnika jer njegova uloga na serveru nije ispod uloge bota u hijerarhiji.\n\n**Rešenje:** U Discord podešavanjima servera → Roles, pomeri ulogu bota iznad uloga koje korisnici imaju.'
+                        : `❌ Greška: ${err.message}`;
                     try {
-                        await interaction.reply({ content: `❌ Greška: ${err.message}`, ephemeral: true });
+                        await interaction.reply({ content: errMsg, ephemeral: true });
                     } catch(e) {
-                        await interaction.update({ content: `❌ Greška: ${err.message}`, components: [] });
+                        await interaction.update({ content: errMsg, components: [] });
                     }
                 }
                 return;
