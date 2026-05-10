@@ -1,22 +1,38 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const statsStore = require('../utils/statsStore');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+
+const badgesFile = path.join(__dirname, '../badges.json');
+
+function loadBadges() {
+    if (!fs.existsSync(badgesFile)) fs.writeFileSync(badgesFile, JSON.stringify({}));
+    return JSON.parse(fs.readFileSync(badgesFile));
+}
+
+function saveBadges(data) {
+    fs.writeFileSync(badgesFile, JSON.stringify(data, null, 2));
+}
+
+function findUserBadge(badges, userId) {
+    for (const [num, data] of Object.entries(badges)) {
+        if (data.id === userId) return num;
+    }
+    return null;
+}
 
 module.exports = {
-	data: new SlashCommandBuilder()
-		.setName('otkaz')
-		.setDescription('Daje otkaz službeniku iz organizacije (Samo za Načelnike)')
-        .addUserOption(option => 
-            option.setName('sluzbenik')
-                .setDescription('Službenik koji dobija otkaz')
-                .setRequired(true))
-        .addStringOption(option => 
-            option.setName('razlog')
-                .setDescription('Razlog otkaza')
-                .setRequired(true)),
-	async execute(interaction) {
-        const hasRole = interaction.member.roles.cache.some(role => ['director', 'zamenik nacelnika'].includes(role.name.toLowerCase()));
+    data: new SlashCommandBuilder()
+        .setName('otkaz')
+        .setDescription('Daje otkaz i izbacuje policajca sa servera (Samo za Načelnike)')
+        .addUserOption(o => o.setName('sluzbenik').setDescription('Policajac koji dobija otkaz').setRequired(true))
+        .addStringOption(o => o.setName('razlog').setDescription('Razlog otkaza').setRequired(true)),
+
+    async execute(interaction) {
+        const hasRole = interaction.member.roles.cache.some(role =>
+            ['director', 'zamenik nacelnika'].includes(role.name.toLowerCase())
+        );
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
-        
+
         if (!hasRole && !isAdmin) {
             return interaction.reply({ content: '❌ Nemate dozvolu! Ovu komandu mogu koristiti samo načelnici.', ephemeral: true });
         }
@@ -24,22 +40,31 @@ module.exports = {
         const targetUser = interaction.options.getUser('sluzbenik');
         const razlog = interaction.options.getString('razlog');
 
-        statsStore.addOtkaz(targetUser.id, targetUser.username);
+        const badges = loadBadges();
+        const badgeNum = findUserBadge(badges, targetUser.id);
 
-		const embed = new EmbedBuilder()
-			.setColor('#ff0000') // Red for termination
-			.setTitle('🛑 LSPD | Raskid Ugovora (Otkaz)')
-            .setThumbnail(targetUser.displayAvatarURL())
-            .addFields(
-                { name: 'Službenik:', value: `<@${targetUser.id}>`, inline: true },
-                { name: 'Otpustio:', value: `<@${interaction.user.id}>`, inline: true },
-                { name: 'Razlog:', value: razlog, inline: false }
+        const confirmEmbed = new EmbedBuilder()
+            .setColor('#ff0000')
+            .setTitle('⚠️ POTVRDA OTKAZA')
+            .setDescription(
+                `Da li ste sigurni da želite dati otkaz korisniku <@${targetUser.id}>?\n\n` +
+                `**Razlog:** ${razlog}\n` +
+                (badgeNum ? `**Značka #${badgeNum}** će biti oslobođena.\n` : '') +
+                `\n⛔ Korisnik će biti **izbačen sa servera**!`
             )
-            .setFooter({ text: 'Odluka Načelnika je konačna.' })
+            .setThumbnail(targetUser.displayAvatarURL())
             .setTimestamp();
 
-        // Target user role removal logic could go here if configured
-        
-		await interaction.reply({ embeds: [embed] });
-	},
+        // Encode razlog u customId (skratiti ako je predugačak)
+        const safeRazlog = razlog.replace(/_/g, '-').substring(0, 80);
+        const confirmId = `otkaz_potvrdi_${targetUser.id}_${safeRazlog}`;
+        const cancelId = `otkaz_otkazi_${targetUser.id}`;
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(confirmId).setLabel('✅ Potvrdi Otkaz').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId(cancelId).setLabel('❌ Otkaži').setStyle(ButtonStyle.Secondary),
+        );
+
+        return interaction.reply({ embeds: [confirmEmbed], components: [row], ephemeral: true });
+    }
 };

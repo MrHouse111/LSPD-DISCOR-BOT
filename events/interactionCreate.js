@@ -1,4 +1,7 @@
-const { Events, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const { Events, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
+const ZAMENICI_CHANNEL_ID = '1467412666497634487';
+const ODSUSTVO_CHANNEL_ID = '1467410304999624714';
 const dutyStore = require('../utils/dutyStore');
 const statsStore = require('../utils/statsStore');
 
@@ -27,7 +30,7 @@ module.exports = {
 
                     let embed;
                     if (isDutyOn) {
-                        await dutyStore.checkIn(user.id);
+                        await dutyStore.checkIn(user.id, interaction.guildId, interaction.channelId);
                         embed = new EmbedBuilder()
                             .setColor('#00ff00')
                             .setDescription(`🟢 **${interaction.member.displayName}** je stupio/la na dužnost u **${timeString}**.`);
@@ -239,6 +242,82 @@ module.exports = {
 
                 return interaction.showModal(modal);
             }
+
+            // Odsustvo - Odobravanje / Odbijanje
+            else if (customId.startsWith('odsustvo_odobri_') || customId.startsWith('odsustvo_odbij_')) {
+                const isApproved = customId.startsWith('odsustvo_odobri_');
+                const targetUserId = customId.replace('odsustvo_odobri_', '').replace('odsustvo_odbij_', '');
+
+                // Disable buttons on the message
+                const disabledRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('odobri_done').setLabel('✅ Odobreno').setStyle(ButtonStyle.Success).setDisabled(true),
+                    new ButtonBuilder().setCustomId('odbij_done').setLabel('❌ Odbijeno').setStyle(ButtonStyle.Danger).setDisabled(true),
+                );
+
+                const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+                    .setColor(isApproved ? '#00ff00' : '#ff0000')
+                    .setFooter({ text: `${isApproved ? '✅ Odobrio' : '❌ Odbio'}: ${interaction.user.displayName} | ${new Date().toLocaleString('sr-RS', { timeZone: 'Europe/Belgrade' })}` });
+
+                await interaction.update({ embeds: [updatedEmbed], components: [disabledRow] });
+
+                // Slanje DM-a podnosiocu
+                try {
+                    const targetUser = await interaction.client.users.fetch(targetUserId);
+                    const dmEmbed = new EmbedBuilder()
+                        .setColor(isApproved ? '#00ff00' : '#ff0000')
+                        .setTitle(isApproved ? '✅ Odsustvo Odobreno' : '❌ Odsustvo Odbijeno')
+                        .setDescription(
+                            isApproved
+                                ? `Vaša prijava odsustva je **odobrena** od strane načelnika **${interaction.user.displayName}**.`
+                                : `Vaša prijava odsustva je **odbijena** od strane načelnika **${interaction.user.displayName}**.\n\nUkoliko imate pitanja, obratite se High Commandu.`
+                        )
+                        .setTimestamp();
+                    await targetUser.send({ embeds: [dmEmbed] });
+                } catch (dmErr) {
+                    console.warn(`[ODSUSTVO] Ne može se poslati DM korisniku ${targetUserId}`);
+                }
+
+                return;
+            }
+
+            // Otkaz - Potvrda
+            else if (customId.startsWith('otkaz_potvrdi_')) {
+                const parts = customId.replace('otkaz_potvrdi_', '').split('_');
+                const targetUserId = parts[0];
+                const razlog = parts.slice(1).join('_');
+
+                try {
+                    const targetMember = await interaction.guild.members.fetch(targetUserId);
+                    
+                    // Pokušaj slanja DM-a pre kicka
+                    try {
+                        const dmEmbed = new EmbedBuilder()
+                            .setColor('#ff0000')
+                            .setTitle('🛑 LSPD — Raskid Ugovora')
+                            .setDescription(`Vaš ugovor sa LSPD-om je raskinut.\n\n**Razlog:** ${razlog}\n\n*Odluka načelnika je konačna.*`)
+                            .setTimestamp();
+                        await targetMember.send({ embeds: [dmEmbed] });
+                    } catch (e) { /* ignore DM fail */ }
+
+                    await targetMember.kick(`Otkaz — ${razlog}`);
+
+                    const confirmEmbed = new EmbedBuilder()
+                        .setColor('#ff0000')
+                        .setTitle('🛑 Otkaz izvršen')
+                        .setDescription(`Korisnik **${targetMember.user.username}** je izbačen sa servera.\n**Razlog:** ${razlog}`)
+                        .setTimestamp();
+
+                    await interaction.update({ embeds: [confirmEmbed], components: [] });
+                } catch (err) {
+                    await interaction.reply({ content: `❌ Greška pri kicku: ${err.message}`, ephemeral: true });
+                }
+                return;
+            }
+
+            else if (customId.startsWith('otkaz_otkazi_')) {
+                await interaction.update({ content: '❌ Otkaz je otkazan.', embeds: [], components: [] });
+                return;
+            }
         }
 
         // Handle Modal Submissions
@@ -285,7 +364,6 @@ module.exports = {
                     if (oldPanel) await oldPanel.delete();
                 } catch (e) { /* ignore */ }
 
-                const { ButtonBuilder, ButtonStyle } = require('discord.js');
                 const panelEmbed = new EmbedBuilder()
                     .setColor('#0099ff')
                     .setTitle('👮 LSPD Lične Karte')
@@ -302,6 +380,22 @@ module.exports = {
                     );
 
                 await interaction.channel.send({ embeds: [panelEmbed], components: [panelRow] });
+
+                // Obaveštenje Zamenicima o novoj LK
+                try {
+                    const zameniciChannel = await interaction.client.channels.fetch(ZAMENICI_CHANNEL_ID);
+                    if (zameniciChannel) {
+                        const notifEmbed = new EmbedBuilder()
+                            .setColor('#FFD700')
+                            .setTitle('🪪 Nova Lična Karta — Potrebna Dodela Značke')
+                            .setDescription(`Korisnik <@${interaction.user.id}> je upravo kreirao/la Ličnu Kartu.\n\n📋 **Ime:** ${ime}\n🆔 **UUID:** ${uuid}\n\n➡️ Potrebno je dodeliti broj značke/ormarića putem komande \`/znacka dodeli\`.`)
+                            .setThumbnail(interaction.user.displayAvatarURL())
+                            .setTimestamp();
+                        await zameniciChannel.send({ embeds: [notifEmbed] });
+                    }
+                } catch (e) {
+                    console.warn('[LK] Nije moguće poslati obaveštenje u Zamenici kanal:', e.message);
+                }
 
                 return interaction.reply({ content: 'Uspešno ste registrovani i Lična Karta je poslata u kanal!', ephemeral: true });
             }
@@ -325,10 +419,33 @@ module.exports = {
                         { name: 'Period Do', value: datumDo, inline: true },
                         { name: 'Razlog', value: razlog, inline: false }
                     )
-                    .setTimestamp();
+                    .setTimestamp()
+                    .setFooter({ text: 'Na čekanju — čeka se odluka načelnika' });
 
-                await interaction.reply({ content: 'Vaša prijava za odsustvo je uspešno zabeležena.', ephemeral: true });
-                return interaction.channel.send({ embeds: [odsustvoEmbed] });
+                const approveRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`odsustvo_odobri_${interaction.user.id}`)
+                        .setLabel('✅ Odobri')
+                        .setStyle(ButtonStyle.Success),
+                    new ButtonBuilder()
+                        .setCustomId(`odsustvo_odbij_${interaction.user.id}`)
+                        .setLabel('❌ Odbij')
+                        .setStyle(ButtonStyle.Danger),
+                );
+
+                await interaction.reply({ content: '✅ Vaša prijava za odsustvo je uspešno zabeležena. Načelnik će je pregledati.', ephemeral: true });
+
+                // Slanje u kanal za odsustva (za načelnike)
+                try {
+                    const odsustvoChannel = await interaction.client.channels.fetch(ODSUSTVO_CHANNEL_ID);
+                    if (odsustvoChannel) {
+                        await odsustvoChannel.send({ embeds: [odsustvoEmbed], components: [approveRow] });
+                    }
+                } catch (e) {
+                    console.warn('[ODSUSTVO] Nije moguće poslati u odsustvo kanal:', e.message);
+                }
+
+                return;
             }
         }
 
