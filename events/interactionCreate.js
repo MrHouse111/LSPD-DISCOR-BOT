@@ -332,7 +332,7 @@ module.exports = {
                                 .setColor('#8B0000')
                                 .setTitle('🛑 LSPD | Raskid Ugovora')
                                 .addFields(
-                                    { name: 'Službenik', value: `**${targetDisplayName}** (${targetUsername})`, inline: true },
+                                    { name: 'Službenik', value: `<@${targetUserId}> (${targetUsername})`, inline: true },
                                     { name: 'Odluku doneo', value: `<@${interaction.user.id}>`, inline: true },
                                     { name: 'Razlog', value: razlog, inline: false }
                                 )
@@ -394,9 +394,28 @@ module.exports = {
                     .setTimestamp();
 
                 // Dodavanje role 'Policajac'
-                const policajacRole = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === 'policajac');
+                let policajacRole = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === 'policajac');
+                
+                if (!policajacRole) {
+                    try {
+                        policajacRole = await interaction.guild.roles.create({
+                            name: 'Policajac',
+                            color: '#3498db',
+                            reason: 'Automatski kreirana rola za nove LSPD clanove'
+                        });
+                    } catch (err) {
+                        console.error('[LK] Ne mogu da kreiram rolu Policajac:', err.message);
+                    }
+                }
+
+                let roleWarning = '';
                 if (policajacRole) {
-                    await interaction.member.roles.add(policajacRole).catch(console.error);
+                    try {
+                        await interaction.member.roles.add(policajacRole);
+                    } catch (err) {
+                        console.error('[LK] Ne mogu dodeliti rolu Policajac:', err.message);
+                        roleWarning = '\n⚠️ *Napomena: Bot nije uspeo da vam dodeli ulogu Policajac jer je njegova uloga niža od nje u hijerarhiji servera.*';
+                    }
                 }
 
                 // Attempt to change nickname
@@ -450,7 +469,7 @@ module.exports = {
                     console.warn('[LK] Nije moguće poslati obaveštenje u Zamenici kanal:', e.message);
                 }
 
-                return interaction.reply({ content: 'Uspešno ste registrovani i Lična Karta je poslata u kanal!', ephemeral: true });
+                return interaction.reply({ content: `Uspešno ste registrovani i Lična Karta je poslata u kanal!${roleWarning}`, ephemeral: true });
             }
 
             if (interaction.customId === 'odsustvo_modal') {
