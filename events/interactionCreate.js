@@ -306,6 +306,10 @@ module.exports = {
                                 }
                             }
                             fs.writeFileSync(badgesFile, JSON.stringify(badges, null, 2));
+                            
+                            // Ažuriraj leaderboard
+                            const { updateLeaderboard } = require('../utils/badgeLeaderboard');
+                            updateLeaderboard(interaction.client);
                         }
                     } catch (badgeErr) {
                         console.warn('[OTKAZ] Greška pri brisanju značke:', badgeErr.message);

@@ -7,6 +7,7 @@ const voiceSessions = new Map();
 
 module.exports = {
     name: Events.VoiceStateUpdate,
+    voiceSessions, // Exporting to allow initialization on boot
     async execute(oldState, newState) {
         // Ignoriši botove
         if (newState.member?.user.bot) return;

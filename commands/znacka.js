@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { updateLeaderboard } = require('../utils/badgeLeaderboard');
 
 const badgesFile = path.join(__dirname, '../badges.json');
 
@@ -88,6 +89,9 @@ module.exports = {
 
             badges[badgeNum.toString()] = { id: targetUser.id, name: targetUser.username };
             saveBadges(badges);
+            
+            // Ažuriraj leaderboard
+            updateLeaderboard(interaction.client);
 
             // Slanje DM-a korisniku
             try {
@@ -125,6 +129,9 @@ module.exports = {
 
             delete badges[existing];
             saveBadges(badges);
+            
+            // Ažuriraj leaderboard
+            updateLeaderboard(interaction.client);
 
             return interaction.reply({
                 embeds: [new EmbedBuilder()
@@ -151,6 +158,9 @@ module.exports = {
             delete badges[existing];
             badges[newNum.toString()] = { id: targetUser.id, name: targetUser.username };
             saveBadges(badges);
+            
+            // Ažuriraj leaderboard
+            updateLeaderboard(interaction.client);
 
             return interaction.reply({
                 embeds: [new EmbedBuilder()

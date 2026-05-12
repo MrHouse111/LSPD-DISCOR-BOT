@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { updateLeaderboard } = require('../utils/badgeLeaderboard');
 
 const badgesFile = path.join(__dirname, '../badges.json');
 
@@ -59,6 +60,9 @@ module.exports = {
             name: targetUser.username
         };
         saveBadges(badges);
+        
+        // Ažuriraj leaderboard
+        updateLeaderboard(interaction.client);
 
         const embed = new EmbedBuilder()
             .setColor('#FFD700')
