@@ -164,6 +164,18 @@ module.exports = {
             // Ažuriraj leaderboard
             updateLeaderboard(interaction.client);
 
+            // Slanje DM-a korisniku
+            try {
+                const dmEmbed = new EmbedBuilder()
+                    .setColor('#FFD700')
+                    .setTitle('👮 LSPD — Nova Značka')
+                    .setDescription(`Vaš broj značke i ormarića je izmenjen!\n\n🪪 **Vaš novi broj značke:** \`#${newNum}\`\n🗄️ **Vaš novi ormarić:** \`${newNum}\`\n\n*Stari broj #${existing} više nije važeći.*`)
+                    .setTimestamp();
+                await targetUser.send({ embeds: [dmEmbed] });
+            } catch (e) {
+                console.warn(`[ZNACKA] Ne može se poslati DM korisniku ${targetUser.id}`);
+            }
+
             return interaction.reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#3498db')
