@@ -23,7 +23,7 @@ module.exports = {
         .addUserOption(option => option.setName('sluzbenik').setDescription('Službenik kome se menja značka').setRequired(true))
         .addIntegerOption(option => option.setName('broj').setDescription('Novi broj značke').setRequired(true)),
     async execute(interaction) {
-        const hasRole = interaction.member.roles.cache.some(role => ['director', 'zamenik nacelnika'].includes(role.name.toLowerCase()));
+        const hasRole = interaction.member.roles.cache.some(role => ['director', 'zamenik nacelnika', 'načelnik', 'nacelnik'].includes(role.name.toLowerCase()));
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
         
         if (!hasRole && !isAdmin) {

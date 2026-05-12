@@ -17,6 +17,18 @@ module.exports = {
         // Ignoriši poruke od botova (štiti od beskonačnih petlji)
         if (message.author.bot) return;
 
+        // --- STICKY LEADERBOARD LOGIKA ---
+        try {
+            const { loadLeaderboardConfig, updateLeaderboard } = require('../utils/badgeLeaderboard');
+            const config = loadLeaderboardConfig();
+            if (config && config.channelId === message.channel.id) {
+                // Ako neko pise u leaderboard kanalu, pomeri leaderboard na dno
+                updateLeaderboard(message.client);
+            }
+        } catch (error) {
+            console.error('Greška pri sticky leaderboardu:', error);
+        }
+
         // --- 0. POMOĆ I KOMANDE (Prikaz Uputstva) ---
         const contentLower = message.content.toLowerCase().trim();
         if (contentLower === '/komande' || contentLower === '/help' || contentLower === '!komande' || contentLower === '!help') {

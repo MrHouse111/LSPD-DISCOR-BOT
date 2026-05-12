@@ -55,19 +55,17 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        const sub = interaction.options.getSubcommand();
+        const badges = loadBadges();
+        
         const hasRole = interaction.member.roles.cache.some(role =>
-            ['director', 'zamenik nacelnika'].includes(role.name.toLowerCase())
+            ['director', 'zamenik nacelnika', 'načelnik', 'nacelnik'].includes(role.name.toLowerCase())
         );
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
 
-        if (!hasRole && !isAdmin) {
-            return interaction.reply({ content: '❌ Samo Načelnici mogu koristiti ovu komandu!', ephemeral: true });
-        }
-
-        const sub = interaction.options.getSubcommand();
-        const badges = loadBadges();
-
         if (sub === 'dodeli') {
+            if (!hasRole && !isAdmin) return interaction.reply({ content: '❌ Samo Načelnici mogu dodeliti značku!', ephemeral: true });
+
             const targetUser = interaction.options.getUser('korisnik');
             const requestedNum = interaction.options.getInteger('broj');
 
@@ -120,6 +118,8 @@ module.exports = {
         }
 
         if (sub === 'ukloni') {
+            if (!hasRole && !isAdmin) return interaction.reply({ content: '❌ Samo Načelnici mogu ukloniti značku!', ephemeral: true });
+
             const targetUser = interaction.options.getUser('korisnik');
             const existing = findUserBadge(badges, targetUser.id);
 
@@ -144,6 +144,8 @@ module.exports = {
         }
 
         if (sub === 'izmeni') {
+            if (!hasRole && !isAdmin) return interaction.reply({ content: '❌ Samo Načelnici mogu izmeniti značku!', ephemeral: true });
+
             const targetUser = interaction.options.getUser('korisnik');
             const newNum = interaction.options.getInteger('novi_broj');
             const existing = findUserBadge(badges, targetUser.id);

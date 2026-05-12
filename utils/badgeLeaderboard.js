@@ -103,16 +103,13 @@ async function updateLeaderboard(client) {
         const badges = loadBadges();
         const embed = buildLeaderboardEmbed(badges);
 
-        // Pokušaj da ažuriraš postojeću poruku
+        // Pokušaj da obrišeš postojeću poruku da bi nova bila na dnu
         if (messageId) {
             try {
                 const existingMsg = await channel.messages.fetch(messageId);
-                await existingMsg.edit({ embeds: [embed] });
-                console.log('[LEADERBOARD] Leaderboard ažuriran.');
-                return;
+                await existingMsg.delete();
             } catch (e) {
-                // Poruka obrisana ili ne postoji — šaljemo novu
-                console.warn('[LEADERBOARD] Stara poruka nije pronađena, šaljem novu...');
+                // Poruka već obrisana ili ne postoji
             }
         }
 
