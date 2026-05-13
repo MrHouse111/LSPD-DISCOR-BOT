@@ -8,7 +8,7 @@ module.exports = {
 
     async execute(interaction) {
         const hasRole = interaction.member.roles.cache.some(role =>
-            ['director', 'zamenik nacelnika'].includes(role.name.toLowerCase())
+            ['director', '👮nacelnik👮'].includes(role.name.toLowerCase())
         );
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
 

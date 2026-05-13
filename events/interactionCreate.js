@@ -292,24 +292,23 @@ module.exports = {
                     const targetUsername = targetMember.user.username;
                     const targetDisplayName = targetMember.displayName;
 
-                    // Brisanje znacke iz badges.json
+                    // Brisanje znacke iz Firebase-a
                     try {
-                        const fs = require('fs');
-                        const path = require('path');
-                        const badgesFile = path.join(__dirname, '../badges.json');
-                        if (fs.existsSync(badgesFile)) {
-                            const badges = JSON.parse(fs.readFileSync(badgesFile));
-                            for (const [num, data] of Object.entries(badges)) {
-                                if (data.id === targetUserId) {
-                                    delete badges[num];
-                                    break;
-                                }
+                        const { loadBadges, saveBadges, updateLeaderboard } = require('../utils/badgeLeaderboard');
+                        const badges = await loadBadges();
+                        let updated = false;
+                        for (const [num, data] of Object.entries(badges)) {
+                            if (data.id === targetUserId) {
+                                delete badges[num];
+                                updated = true;
+                                break;
                             }
-                            fs.writeFileSync(badgesFile, JSON.stringify(badges, null, 2));
+                        }
+                        if (updated) {
+                            await saveBadges(badges);
                             
                             // Ažuriraj leaderboard
-                            const { updateLeaderboard } = require('../utils/badgeLeaderboard');
-                            updateLeaderboard(interaction.client);
+                            await updateLeaderboard(interaction.client);
                         }
                     } catch (badgeErr) {
                         console.warn('[OTKAZ] Greška pri brisanju značke:', badgeErr.message);

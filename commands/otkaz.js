@@ -1,17 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-
-const badgesFile = path.join(__dirname, '../badges.json');
-
-function loadBadges() {
-    if (!fs.existsSync(badgesFile)) fs.writeFileSync(badgesFile, JSON.stringify({}));
-    return JSON.parse(fs.readFileSync(badgesFile));
-}
-
-function saveBadges(data) {
-    fs.writeFileSync(badgesFile, JSON.stringify(data, null, 2));
-}
+const { loadBadges } = require('../utils/badgeLeaderboard');
 
 function findUserBadge(badges, userId) {
     for (const [num, data] of Object.entries(badges)) {
@@ -29,7 +17,7 @@ module.exports = {
 
     async execute(interaction) {
         const hasRole = interaction.member.roles.cache.some(role =>
-            ['director', 'zamenik nacelnika'].includes(role.name.toLowerCase())
+            ['director', '👮nacelnik👮'].includes(role.name.toLowerCase())
         );
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
 
@@ -40,7 +28,7 @@ module.exports = {
         const targetUser = interaction.options.getUser('sluzbenik');
         const razlog = interaction.options.getString('razlog');
 
-        const badges = loadBadges();
+        const badges = await loadBadges();
         const badgeNum = findUserBadge(badges, targetUser.id);
 
         const confirmEmbed = new EmbedBuilder()

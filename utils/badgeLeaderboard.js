@@ -1,27 +1,62 @@
 const { EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-
-const badgesFile = path.join(__dirname, '..', 'badges.json');
-const leaderboardConfigFile = path.join(__dirname, '..', 'badge_leaderboard.json');
+const { db } = require('./firebase');
 
 // ID kanala za značke i ormariće
 const ZNACKE_CHANNEL_ID = null; // Biće postavljeno dinamički kroz komandu
 
-function loadBadges() {
-    if (!fs.existsSync(badgesFile)) fs.writeFileSync(badgesFile, JSON.stringify({}));
-    return JSON.parse(fs.readFileSync(badgesFile));
-}
-
-function loadLeaderboardConfig() {
-    if (!fs.existsSync(leaderboardConfigFile)) {
-        fs.writeFileSync(leaderboardConfigFile, JSON.stringify({}));
+// Funkcija za očitavanje znački iz Firestore
+async function loadBadges() {
+    if (!db) return {};
+    try {
+        const doc = await db.collection('badges_system').doc('data').get();
+        if (doc.exists) {
+            return doc.data();
+        } else {
+            await db.collection('badges_system').doc('data').set({});
+            return {};
+        }
+    } catch (e) {
+        console.error('[FIREBASE ERROR] Ne mogu da učitam značke:', e);
+        return {};
     }
-    return JSON.parse(fs.readFileSync(leaderboardConfigFile));
 }
 
-function saveLeaderboardConfig(data) {
-    fs.writeFileSync(leaderboardConfigFile, JSON.stringify(data, null, 2));
+// Funkcija za čuvanje znački u Firestore
+async function saveBadges(badges) {
+    if (!db) return;
+    try {
+        await db.collection('badges_system').doc('data').set(badges);
+    } catch (e) {
+        console.error('[FIREBASE ERROR] Ne mogu da sačuvam značke:', e);
+    }
+}
+
+// Funkcija za učitavanje configa iz Firestore
+async function loadLeaderboardConfig() {
+    if (!db) return {};
+    try {
+        const doc = await db.collection('badges_system').doc('config').get();
+        if (doc.exists) {
+            return doc.data();
+        } else {
+            const initial = { channelId: null, messageId: null };
+            await db.collection('badges_system').doc('config').set(initial);
+            return initial;
+        }
+    } catch (e) {
+        console.error('[FIREBASE ERROR] Ne mogu da učitam config:', e);
+        return {};
+    }
+}
+
+// Funkcija za čuvanje configa u Firestore
+async function saveLeaderboardConfig(config) {
+    if (!db) return;
+    try {
+        await db.collection('badges_system').doc('config').set(config, { merge: true });
+    } catch (e) {
+        console.error('[FIREBASE ERROR] Ne mogu da sačuvam config:', e);
+    }
 }
 
 /**
@@ -84,7 +119,7 @@ function getNextFree(badges) {
  * @param {Client} client - Discord.js Client instanca
  */
 async function updateLeaderboard(client) {
-    const config = loadLeaderboardConfig();
+    const config = await loadLeaderboardConfig();
     const channelId = config.channelId;
     const messageId = config.messageId;
 
@@ -100,7 +135,7 @@ async function updateLeaderboard(client) {
             return;
         }
 
-        const badges = loadBadges();
+        const badges = await loadBadges();
         const embed = buildLeaderboardEmbed(badges);
 
         // Pokušaj da obrišeš postojeću poruku da bi nova bila na dnu
@@ -116,7 +151,7 @@ async function updateLeaderboard(client) {
         // Šalji novu poruku
         const newMsg = await channel.send({ embeds: [embed] });
         config.messageId = newMsg.id;
-        saveLeaderboardConfig(config);
+        await saveLeaderboardConfig(config);
         console.log('[LEADERBOARD] Novi leaderboard postavljen, ID:', newMsg.id);
 
     } catch (err) {
@@ -130,7 +165,7 @@ async function updateLeaderboard(client) {
  * @param {Client} client - Discord.js Client instanca
  */
 async function setupLeaderboard(channel, client) {
-    const badges = loadBadges();
+    const badges = await loadBadges();
     const embed = buildLeaderboardEmbed(badges);
 
     const msg = await channel.send({ embeds: [embed] });
@@ -139,7 +174,7 @@ async function setupLeaderboard(channel, client) {
         channelId: channel.id,
         messageId: msg.id
     };
-    saveLeaderboardConfig(config);
+    await saveLeaderboardConfig(config);
 
     console.log(`[LEADERBOARD] Postavljen u kanal ${channel.name} (${channel.id}), poruka: ${msg.id}`);
     return msg;
@@ -150,5 +185,7 @@ module.exports = {
     setupLeaderboard,
     buildLeaderboardEmbed,
     loadLeaderboardConfig,
-    saveLeaderboardConfig
+    saveLeaderboardConfig,
+    loadBadges,
+    saveBadges
 };

@@ -1,19 +1,17 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-const { updateLeaderboard } = require('../utils/badgeLeaderboard');
+const { updateLeaderboard, loadBadges, saveBadges } = require('../utils/badgeLeaderboard');
 
-const badgesFile = path.join(__dirname, '../badges.json');
+const LOG_CHANNEL_ID = '1504164741931864164';
 
-function loadBadges() {
-    if (!fs.existsSync(badgesFile)) {
-        fs.writeFileSync(badgesFile, JSON.stringify({}));
+async function sendLog(client, embed) {
+    try {
+        const channel = await client.channels.fetch(LOG_CHANNEL_ID);
+        if (channel) {
+            await channel.send({ embeds: [embed] });
+        }
+    } catch (err) {
+        console.error('[LOG ERROR] Ne mogu da pošaljem poruku u log kanal:', err);
     }
-    return JSON.parse(fs.readFileSync(badgesFile));
-}
-
-function saveBadges(data) {
-    fs.writeFileSync(badgesFile, JSON.stringify(data, null, 2));
 }
 
 module.exports = {
@@ -23,14 +21,14 @@ module.exports = {
         .addUserOption(option => option.setName('sluzbenik').setDescription('Službenik kome se menja značka').setRequired(true))
         .addIntegerOption(option => option.setName('broj').setDescription('Novi broj značke').setRequired(true)),
     async execute(interaction) {
-        const hasRole = interaction.member.roles.cache.some(role => ['director', 'zamenik nacelnika', 'načelnik', 'nacelnik'].includes(role.name.toLowerCase()));
+        const hasRole = interaction.member.roles.cache.some(role => ['director', '👮nacelnik👮'].includes(role.name.toLowerCase()));
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
         
         if (!hasRole && !isAdmin) {
             return interaction.reply({ content: '❌ Samo Načelnici mogu upravljati značkama!', ephemeral: true });
         }
 
-        const badges = loadBadges();
+        const badges = await loadBadges();
         const targetUser = interaction.options.getUser('sluzbenik');
         const newBadge = interaction.options.getInteger('broj');
 
@@ -59,7 +57,7 @@ module.exports = {
             id: targetUser.id,
             name: targetUser.username
         };
-        saveBadges(badges);
+        await saveBadges(badges);
         
         // Ažuriraj leaderboard
         updateLeaderboard(interaction.client);
@@ -86,6 +84,8 @@ module.exports = {
             )
             .setTimestamp();
 
-        return interaction.reply({ embeds: [embed] });
+        await sendLog(interaction.client, embed);
+
+        return interaction.reply({ content: `✅ Uspešno izmenjena značka službeniku <@${targetUser.id}> u broj **${newBadge}**.`, ephemeral: true });
     },
 };

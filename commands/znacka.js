@@ -1,18 +1,7 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-const { updateLeaderboard } = require('../utils/badgeLeaderboard');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { updateLeaderboard, loadBadges, saveBadges } = require('../utils/badgeLeaderboard');
 
-const badgesFile = path.join(__dirname, '../badges.json');
-
-function loadBadges() {
-    if (!fs.existsSync(badgesFile)) fs.writeFileSync(badgesFile, JSON.stringify({}));
-    return JSON.parse(fs.readFileSync(badgesFile));
-}
-
-function saveBadges(data) {
-    fs.writeFileSync(badgesFile, JSON.stringify(data, null, 2));
-}
+const LOG_CHANNEL_ID = '1504164741931864164';
 
 function nextFreeBadge(badges) {
     let n = 1;
@@ -25,6 +14,17 @@ function findUserBadge(badges, userId) {
         if (data.id === userId) return num;
     }
     return null;
+}
+
+async function sendLog(client, embed) {
+    try {
+        const channel = await client.channels.fetch(LOG_CHANNEL_ID);
+        if (channel) {
+            await channel.send({ embeds: [embed] });
+        }
+    } catch (err) {
+        console.error('[LOG ERROR] Ne mogu da pošaljem poruku u log kanal:', err);
+    }
 }
 
 module.exports = {
@@ -56,10 +56,10 @@ module.exports = {
 
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
-        const badges = loadBadges();
+        const badges = await loadBadges();
         
         const hasRole = interaction.member.roles.cache.some(role =>
-            ['director', 'zamenik nacelnika', 'načelnik', 'nacelnik'].includes(role.name.toLowerCase())
+            ['director', '👮nacelnik👮'].includes(role.name.toLowerCase())
         );
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
 
@@ -86,7 +86,7 @@ module.exports = {
             }
 
             badges[badgeNum.toString()] = { id: targetUser.id, name: targetUser.username };
-            saveBadges(badges);
+            await saveBadges(badges);
             
             // Ažuriraj leaderboard
             updateLeaderboard(interaction.client);
@@ -109,12 +109,14 @@ module.exports = {
                 .addFields(
                     { name: 'Policajac', value: `<@${targetUser.id}>`, inline: true },
                     { name: 'Broj Značke', value: `**#${badgeNum}**`, inline: true },
-                    { name: 'Sledeći slobodan', value: `#${nextFreeBadge(loadBadges())}`, inline: true }
+                    { name: 'Sledeći slobodan', value: `#${nextFreeBadge(badges)}`, inline: true }
                 )
                 .setThumbnail(targetUser.displayAvatarURL())
                 .setTimestamp();
 
-            return interaction.reply({ embeds: [embed] });
+            await sendLog(interaction.client, embed);
+
+            return interaction.reply({ content: `✅ Uspešno dodeljena značka **#${badgeNum}** korisniku <@${targetUser.id}>.`, ephemeral: true });
         }
 
         if (sub === 'ukloni') {
@@ -128,19 +130,20 @@ module.exports = {
             }
 
             delete badges[existing];
-            saveBadges(badges);
+            await saveBadges(badges);
             
             // Ažuriraj leaderboard
             updateLeaderboard(interaction.client);
 
-            return interaction.reply({
-                embeds: [new EmbedBuilder()
-                    .setColor('#e74c3c')
-                    .setTitle('🗑️ Značka Uklonjena')
-                    .setDescription(`Značka **#${existing}** je uklonjena sa korisnika <@${targetUser.id}>.\nBroj je sada slobodan.`)
-                    .setTimestamp()
-                ]
-            });
+            const embed = new EmbedBuilder()
+                .setColor('#e74c3c')
+                .setTitle('🗑️ Značka Uklonjena')
+                .setDescription(`Značka **#${existing}** je uklonjena sa korisnika <@${targetUser.id}>.\nBroj je sada slobodan.`)
+                .setTimestamp();
+            
+            await sendLog(interaction.client, embed);
+
+            return interaction.reply({ content: `✅ Uspešno uklonjena značka **#${existing}** korisniku <@${targetUser.id}>.`, ephemeral: true });
         }
 
         if (sub === 'izmeni') {
@@ -159,7 +162,7 @@ module.exports = {
 
             delete badges[existing];
             badges[newNum.toString()] = { id: targetUser.id, name: targetUser.username };
-            saveBadges(badges);
+            await saveBadges(badges);
             
             // Ažuriraj leaderboard
             updateLeaderboard(interaction.client);
@@ -176,14 +179,15 @@ module.exports = {
                 console.warn(`[ZNACKA] Ne može se poslati DM korisniku ${targetUser.id}`);
             }
 
-            return interaction.reply({
-                embeds: [new EmbedBuilder()
-                    .setColor('#3498db')
-                    .setTitle('✏️ Značka Izmenjena')
-                    .setDescription(`<@${targetUser.id}> sada ima značku **#${newNum}** (prethodno: #${existing}).`)
-                    .setTimestamp()
-                ]
-            });
+            const embed = new EmbedBuilder()
+                .setColor('#3498db')
+                .setTitle('✏️ Značka Izmenjena')
+                .setDescription(`<@${targetUser.id}> sada ima značku **#${newNum}** (prethodno: #${existing}).`)
+                .setTimestamp();
+            
+            await sendLog(interaction.client, embed);
+
+            return interaction.reply({ content: `✅ Uspešno izmenjena značka korisniku <@${targetUser.id}> u **#${newNum}**.`, ephemeral: true });
         }
 
         if (sub === 'info') {
