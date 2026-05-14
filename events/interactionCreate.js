@@ -292,7 +292,7 @@ module.exports = {
                     const targetUsername = targetMember.user.username;
                     const targetDisplayName = targetMember.displayName;
 
-                    // Brisanje znacke iz Firebase-a
+                    // Brisanje znacke iz baze
                     try {
                         const { loadBadges, saveBadges, updateLeaderboard } = require('../utils/badgeLeaderboard');
                         const badges = await loadBadges();

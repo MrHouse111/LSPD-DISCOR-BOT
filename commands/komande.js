@@ -11,7 +11,7 @@ module.exports = {
         const embed1 = new EmbedBuilder()
             .setColor('#1a5276')
             .setTitle('📘 LSPD Support System — User Manual')
-            .setDescription('Kompletno uputstvo za korišćenje LSPD Discord Bota.\nBot radi **24/7** na cloud serveru. Svi podaci se čuvaju u Firebase bazi.')
+            .setDescription('Kompletno uputstvo za korišćenje LSPD Discord Bota.\nBot radi **24/7** na cloud serveru. Svi podaci se čuvaju u lokalnoj bazi.')
             .addFields(
                 {
                     name: '⚙️ Setup Komande (Samo za Admine — koriste se JEDNOM)',
