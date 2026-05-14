@@ -2,7 +2,7 @@ require('dotenv').config();
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
-const { Client, Collection, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes } = require('discord.js');
 const { Player } = require('discord-player');
 const { DefaultExtractors } = require('@discord-player/extractor');
 
@@ -69,9 +69,38 @@ for (const file of eventFiles) {
 const AUTO_LOGOUT_MS = 4 * 60 * 60 * 1000; // 4 sata u ms
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;    // Provera svakih 5 minuta
 
-client.once('ready', () => {
+client.once('ready', async () => {
     console.log(`[BOT] Ulogovan kao ${client.user.tag}`);
-    
+
+    // AUTOMATSKA REGISTRACIJA SLASH KOMANDI
+    try {
+        const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+        const commands = [];
+        const commandsPath = path.join(__dirname, 'commands');
+        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+        for (const file of commandFiles) {
+            const filePath = path.join(commandsPath, file);
+            const command = require(filePath);
+            if ('data' in command) {
+                commands.push(command.data.toJSON());
+            } else {
+                console.log(`[WARNING] The command at ${filePath} is missing a required "data" property.`);
+            }
+        }
+
+        if (commands.length > 0) {
+            console.log(`Registering ${commands.length} application (/) commands...`);
+            await rest.put(
+                Routes.applicationCommands(client.user.id),
+                { body: commands },
+            );
+            console.log(`Successfully registered ${commands.length} application (/) commands.`);
+        }
+    } catch (err) {
+        console.error('[COMMAND REGISTRATION ERROR]', err);
+    }
+
     // Pokretanje interval provere dužnosti
     setInterval(async () => {
         const dutyStore = require('./utils/dutyStore');
