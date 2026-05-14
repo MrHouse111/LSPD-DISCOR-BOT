@@ -3,6 +3,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const { Client, Collection, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Player } = require('discord-player');
+const { DefaultExtractors } = require('@discord-player/extractor');
 
 // DUMMY SERVER ZA RENDER.COM
 const app = express();
@@ -19,7 +21,7 @@ app.listen(port, '0.0.0.0', () => {
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntasdasdas dasentBits.GuildMessages,
+        GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildVoiceStates,
@@ -28,6 +30,10 @@ const client = new Client({
 });
 
 client.commands = new Collection();
+
+// Inicijalizacija YouTube Music Pleyera
+const player = new Player(client);
+player.extractors.loadMulti(DefaultExtractors);
 
 // Dynamically load commands
 const commandsPath = path.join(__dirname, 'commands');
