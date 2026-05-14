@@ -1,173 +1,155 @@
-const { db, admin } = require('./firebase');
+const db = require('./database');
 
 function getTodayString() {
     const now = new Date();
-    // Koristi Europe/Belgrade timezone da datum bude tačan za Srbiju
-    return now.toLocaleDateString('en-CA', { timeZone: 'Europe/Belgrade' }); // Vraća YYYY-MM-DD format
+    return now.toLocaleDateString('en-CA', { timeZone: 'Europe/Belgrade' }); 
+}
+
+// Pomoćna funkcija koja učitava JSON, dodaje vrednost, i vraća JSON
+function updateDailyStat(jsonStr, dateStr, incrementAmount) {
+    let data = {};
+    try {
+        if (jsonStr) data = JSON.parse(jsonStr);
+    } catch (e) {}
+    
+    data[dateStr] = (data[dateStr] || 0) + incrementAmount;
+    return JSON.stringify(data);
 }
 
 module.exports = {
     addMessage: async (userId, username) => {
-        if (!db) {
-            console.warn('[STATS] Firebase db je null - poruke se NE beleže!');
-            return;
-        }
         try {
-            const ref = db.collection('stats').doc(userId);
-            const today = getTodayString();
-            
-            await ref.set({
-                username: username,
-                messages: {
-                    [today]: admin.firestore.FieldValue.increment(1)
-                }
-            }, { merge: true });
-        } catch (error) {
-            console.error('[STATS ERROR] Greška pri beleženju poruke:', error.message);
+            db.prepare('INSERT OR IGNORE INTO stats (user_id, username) VALUES (?, ?)').run(userId, username);
+            const row = db.prepare('SELECT messages FROM stats WHERE user_id = ?').get(userId);
+            const newMessages = updateDailyStat(row.messages, getTodayString(), 1);
+            db.prepare('UPDATE stats SET messages = ?, username = ? WHERE user_id = ?').run(newMessages, username, userId);
+        } catch (e) {
+            console.error('[SQLITE ERROR] addMessage:', e);
         }
     },
 
     addVoiceTime: async (userId, username, durationMs) => {
-        if (!db) {
-            console.warn('[STATS] Firebase db je null - voice vreme se NE beleži!');
-            return;
-        }
         try {
-            const ref = db.collection('stats').doc(userId);
-            const today = getTodayString();
-            
-            await ref.set({
-                username: username,
-                voice: {
-                    [today]: admin.firestore.FieldValue.increment(durationMs)
-                }
-            }, { merge: true });
-        } catch (error) {
-            console.error('[STATS ERROR] Greška pri beleženju voice vremena:', error.message);
+            db.prepare('INSERT OR IGNORE INTO stats (user_id, username) VALUES (?, ?)').run(userId, username);
+            const row = db.prepare('SELECT voice FROM stats WHERE user_id = ?').get(userId);
+            const newVoice = updateDailyStat(row.voice, getTodayString(), durationMs);
+            db.prepare('UPDATE stats SET voice = ?, username = ? WHERE user_id = ?').run(newVoice, username, userId);
+        } catch (e) {
+            console.error('[SQLITE ERROR] addVoiceTime:', e);
         }
     },
 
     addDutyTime: async (userId, username, durationMs) => {
-        if (!db) {
-            console.warn('[STATS] Firebase db je null - duty vreme se NE beleži!');
-            return;
-        }
         try {
-            const ref = db.collection('stats').doc(userId);
-            const today = getTodayString();
-            
-            await ref.set({
-                username: username,
-                duty: {
-                    [today]: admin.firestore.FieldValue.increment(durationMs)
-                }
-            }, { merge: true });
-        } catch (error) {
-            console.error('[STATS ERROR] Greška pri beleženju duty vremena:', error.message);
+            db.prepare('INSERT OR IGNORE INTO stats (user_id, username) VALUES (?, ?)').run(userId, username);
+            const row = db.prepare('SELECT duty FROM stats WHERE user_id = ?').get(userId);
+            const newDuty = updateDailyStat(row.duty, getTodayString(), durationMs);
+            db.prepare('UPDATE stats SET duty = ?, username = ? WHERE user_id = ?').run(newDuty, username, userId);
+        } catch (e) {
+            console.error('[SQLITE ERROR] addDutyTime:', e);
         }
     },
 
     addPlus: async (userId, username) => {
-        if (!db) return;
-        const ref = db.collection('stats').doc(userId);
-        await ref.set({
-            username: username,
-            pluses: admin.firestore.FieldValue.increment(1)
-        }, { merge: true });
+        try {
+            db.prepare('INSERT OR IGNORE INTO stats (user_id, username) VALUES (?, ?)').run(userId, username);
+            db.prepare('UPDATE stats SET pluses = pluses + 1, username = ? WHERE user_id = ?').run(username, userId);
+        } catch (e) {
+            console.error('[SQLITE ERROR] addPlus:', e);
+        }
     },
 
     addMinus: async (userId, username) => {
-        if (!db) return;
-        const ref = db.collection('stats').doc(userId);
-        await ref.set({
-            username: username,
-            minuses: admin.firestore.FieldValue.increment(1)
-        }, { merge: true });
+        try {
+            db.prepare('INSERT OR IGNORE INTO stats (user_id, username) VALUES (?, ?)').run(userId, username);
+            db.prepare('UPDATE stats SET minuses = minuses + 1, username = ? WHERE user_id = ?').run(username, userId);
+        } catch (e) {
+            console.error('[SQLITE ERROR] addMinus:', e);
+        }
     },
 
     addOtkaz: async (userId, username) => {
-        if (!db) return;
-        const ref = db.collection('stats').doc(userId);
-        await ref.set({
-            username: username,
-            otkazi: admin.firestore.FieldValue.increment(1)
-        }, { merge: true });
+        try {
+            db.prepare('INSERT OR IGNORE INTO stats (user_id, username) VALUES (?, ?)').run(userId, username);
+            db.prepare('UPDATE stats SET otkazi = otkazi + 1, username = ? WHERE user_id = ?').run(username, userId);
+        } catch (e) {
+            console.error('[SQLITE ERROR] addOtkaz:', e);
+        }
     },
 
     getUserStats: async (userId) => {
-        if (!db) return null;
-        const doc = await db.collection('stats').doc(userId).get();
-        return doc.exists ? doc.data() : null;
+        try {
+            const row = db.prepare('SELECT * FROM stats WHERE user_id = ?').get(userId);
+            if (!row) return null;
+            return {
+                username: row.username,
+                messages: JSON.parse(row.messages || '{}'),
+                voice: JSON.parse(row.voice || '{}'),
+                duty: JSON.parse(row.duty || '{}'),
+                pluses: row.pluses,
+                minuses: row.minuses,
+                otkazi: row.otkazi
+            };
+        } catch (e) {
+            console.error('[SQLITE ERROR] getUserStats:', e);
+            return null;
+        }
     },
 
     getAllStats: async () => {
-        if (!db) return {};
-        const snapshot = await db.collection('stats').get();
-        const users = {};
-        snapshot.forEach(doc => {
-            users[doc.id] = doc.data();
-        });
-        return users;
+        try {
+            const rows = db.prepare('SELECT * FROM stats').all();
+            const users = {};
+            for (const row of rows) {
+                users[row.user_id] = {
+                    username: row.username,
+                    messages: JSON.parse(row.messages || '{}'),
+                    voice: JSON.parse(row.voice || '{}'),
+                    duty: JSON.parse(row.duty || '{}'),
+                    pluses: row.pluses,
+                    minuses: row.minuses,
+                    otkazi: row.otkazi
+                };
+            }
+            return users;
+        } catch (e) {
+            console.error('[SQLITE ERROR] getAllStats:', e);
+            return {};
+        }
     },
     
     cleanOldData: async () => {
-        if (!db) return;
-        const snapshot = await db.collection('stats').get();
-        const now = new Date();
-        const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
-        
-        const batch = db.batch();
-        let operationsCount = 0;
+        try {
+            const rows = db.prepare('SELECT user_id, messages, voice, duty FROM stats').all();
+            const now = new Date();
+            const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+            
+            const updateStmt = db.prepare('UPDATE stats SET messages = ?, voice = ?, duty = ? WHERE user_id = ?');
+            
+            db.transaction(() => {
+                for (const row of rows) {
+                    let changed = false;
+                    const msgs = JSON.parse(row.messages || '{}');
+                    const voice = JSON.parse(row.voice || '{}');
+                    const duty = JSON.parse(row.duty || '{}');
 
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            let updates = {};
-            let needsUpdate = false;
+                    for (const date in msgs) {
+                        if (new Date(date) < sevenDaysAgo) { delete msgs[date]; changed = true; }
+                    }
+                    for (const date in voice) {
+                        if (new Date(date) < sevenDaysAgo) { delete voice[date]; changed = true; }
+                    }
+                    for (const date in duty) {
+                        if (new Date(date) < sevenDaysAgo) { delete duty[date]; changed = true; }
+                    }
 
-            if (data.messages && typeof data.messages === 'object') {
-                for (const date in data.messages) {
-                    if (new Date(date) < sevenDaysAgo) {
-                        updates[`messages.${date}`] = admin.firestore.FieldValue.delete();
-                        needsUpdate = true;
+                    if (changed) {
+                        updateStmt.run(JSON.stringify(msgs), JSON.stringify(voice), JSON.stringify(duty), row.user_id);
                     }
                 }
-            }
-            if (data.voice && typeof data.voice === 'object') {
-                for (const date in data.voice) {
-                    if (new Date(date) < sevenDaysAgo) {
-                        updates[`voice.${date}`] = admin.firestore.FieldValue.delete();
-                        needsUpdate = true;
-                    }
-                }
-            }
-            if (data.duty && typeof data.duty === 'object') {
-                for (const date in data.duty) {
-                    if (new Date(date) < sevenDaysAgo) {
-                        updates[`duty.${date}`] = admin.firestore.FieldValue.delete();
-                        needsUpdate = true;
-                    }
-                }
-            }
-
-            // Literal fields with dots
-            for (const key in data) {
-                if (key.startsWith('messages.') || key.startsWith('voice.') || key.startsWith('duty.')) {
-                    const dateStr = key.split('.')[1];
-                    if (new Date(dateStr) < sevenDaysAgo) {
-                        // Batch update allows deleting nested fields easily with dots, but for literal fields with dots it might be tricky.
-                        // We will just leave literal fields to avoid crashes, they will age out.
-                    }
-                }
-            }
-
-            if (needsUpdate) {
-                batch.update(db.collection('stats').doc(doc.id), updates);
-                operationsCount++;
-            }
-        });
-
-        if (operationsCount > 0) {
-            await batch.commit();
+            })();
+        } catch (e) {
+            console.error('[SQLITE ERROR] cleanOldData:', e);
         }
     }
 };

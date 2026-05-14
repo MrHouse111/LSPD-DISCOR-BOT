@@ -1,7 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const statsStore = require('../utils/statsStore');
-const { db } = require('../utils/firebase');
-
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('izvestaj')

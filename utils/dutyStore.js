@@ -1,61 +1,61 @@
-const { db } = require('./firebase');
+const db = require('./database');
 
-// In-memory map: userId -> { startTime, guildId, channelId }
+// In-memory map se više ne koristi za bazu, 
+// ali se ostavlja zbog kompatibilnosti ako neki stari kod proverava ovo
 const activeTimers = new Map();
-
-const AUTO_LOGOUT_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 module.exports = {
     checkIn: async (userId, guildId, channelId) => {
-        if (!db) return;
-        await db.collection('duty_status').doc(userId).set({
-            isOnDuty: true,
-            startTime: Date.now(),
-            guildId: guildId || null,
-            channelId: channelId || null
-        }, { merge: true });
-
-        // Store in-memory for auto-logout tracking
-        activeTimers.set(userId, { startTime: Date.now(), guildId, channelId });
+        try {
+            const stmt = db.prepare('INSERT OR REPLACE INTO duty_logs (user_id, channel_id, start_time) VALUES (?, ?, ?)');
+            stmt.run(userId, channelId || null, Date.now());
+            
+            // Kompatibilnost sa auto-logout proverama u index.js
+            activeTimers.set(userId, { startTime: Date.now(), guildId, channelId });
+        } catch (e) {
+            console.error('[SQLITE ERROR] checkIn:', e);
+        }
     },
 
     checkOut: async (userId) => {
-        if (!db) return null;
-        const doc = await db.collection('duty_status').doc(userId).get();
-        if (doc.exists && doc.data().isOnDuty) {
-            const startTime = doc.data().startTime;
-            const duration = Date.now() - startTime;
-
-            await db.collection('duty_status').doc(userId).update({
-                isOnDuty: false,
-                startTime: null,
-                guildId: null,
-                channelId: null
-            });
-
-            // Remove from in-memory tracker
-            activeTimers.delete(userId);
-
-            return duration;
+        try {
+            const row = db.prepare('SELECT start_time FROM duty_logs WHERE user_id = ?').get(userId);
+            if (row) {
+                const duration = Date.now() - row.start_time;
+                db.prepare('DELETE FROM duty_logs WHERE user_id = ?').run(userId);
+                activeTimers.delete(userId);
+                return duration;
+            }
+            return null;
+        } catch (e) {
+            console.error('[SQLITE ERROR] checkOut:', e);
+            return null;
         }
-        return null;
     },
 
     isOnDuty: async (userId) => {
-        if (!db) return false;
-        const doc = await db.collection('duty_status').doc(userId).get();
-        return doc.exists ? doc.data().isOnDuty : false;
+        try {
+            const row = db.prepare('SELECT user_id FROM duty_logs WHERE user_id = ?').get(userId);
+            return !!row;
+        } catch (e) {
+            console.error('[SQLITE ERROR] isOnDuty:', e);
+            return false;
+        }
     },
 
-    // Returns all users currently on duty from Firestore (used on bot restart)
     getActiveDuty: async () => {
-        if (!db) return [];
-        const snapshot = await db.collection('duty_status').where('isOnDuty', '==', true).get();
-        const results = [];
-        snapshot.forEach(doc => {
-            results.push({ userId: doc.id, ...doc.data() });
-        });
-        return results;
+        try {
+            const rows = db.prepare('SELECT * FROM duty_logs').all();
+            return rows.map(r => ({
+                userId: r.user_id,
+                channelId: r.channel_id,
+                startTime: r.start_time,
+                isOnDuty: true
+            }));
+        } catch (e) {
+            console.error('[SQLITE ERROR] getActiveDuty:', e);
+            return [];
+        }
     },
 
     activeTimers

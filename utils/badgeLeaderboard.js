@@ -1,61 +1,68 @@
 const { EmbedBuilder } = require('discord.js');
-const { db } = require('./firebase');
+const db = require('./database');
 
-// ID kanala za značke i ormariće
-const ZNACKE_CHANNEL_ID = null; // Biće postavljeno dinamički kroz komandu
-
-// Funkcija za očitavanje znački iz Firestore
+// Funkcija za očitavanje znački iz SQLite (vraća stari format objekta radi kompatibilnosti)
 async function loadBadges() {
-    if (!db) return {};
     try {
-        const doc = await db.collection('badges_system').doc('data').get();
-        if (doc.exists) {
-            return doc.data();
-        } else {
-            await db.collection('badges_system').doc('data').set({});
-            return {};
+        const rows = db.prepare('SELECT badge_number, discord_id FROM badges').all();
+        const badges = {};
+        for (const row of rows) {
+            badges[row.badge_number.toString()] = { id: row.discord_id };
         }
+        return badges;
     } catch (e) {
-        console.error('[FIREBASE ERROR] Ne mogu da učitam značke:', e);
+        console.error('[SQLITE ERROR] Ne mogu da učitam značke:', e);
         return {};
     }
 }
 
-// Funkcija za čuvanje znački u Firestore
+// Funkcija za čuvanje znački u SQLite
 async function saveBadges(badges) {
-    if (!db) return;
     try {
-        await db.collection('badges_system').doc('data').set(badges);
+        // Brisanje svih starih i upis novih (lakši sinhronizovani način da izbegnemo komplikacije s deltama)
+        const deleteStmt = db.prepare('DELETE FROM badges');
+        const insertStmt = db.prepare('INSERT INTO badges (badge_number, discord_id) VALUES (?, ?)');
+        
+        const transaction = db.transaction(() => {
+            deleteStmt.run();
+            for (const [badgeNum, data] of Object.entries(badges)) {
+                insertStmt.run(parseInt(badgeNum), data.id);
+            }
+        });
+        
+        transaction();
     } catch (e) {
-        console.error('[FIREBASE ERROR] Ne mogu da sačuvam značke:', e);
+        console.error('[SQLITE ERROR] Ne mogu da sačuvam značke:', e);
     }
 }
 
-// Funkcija za učitavanje configa iz Firestore
+// Funkcija za učitavanje configa (leaderboard kanala)
 async function loadLeaderboardConfig() {
-    if (!db) return {};
     try {
-        const doc = await db.collection('badges_system').doc('config').get();
-        if (doc.exists) {
-            return doc.data();
-        } else {
-            const initial = { channelId: null, messageId: null };
-            await db.collection('badges_system').doc('config').set(initial);
-            return initial;
-        }
+        const channelRow = db.prepare('SELECT value FROM config WHERE key = ?').get('leaderboard_channel_id');
+        const messageRow = db.prepare('SELECT value FROM config WHERE key = ?').get('leaderboard_message_id');
+        
+        return {
+            channelId: channelRow ? channelRow.value : null,
+            messageId: messageRow ? messageRow.value : null
+        };
     } catch (e) {
-        console.error('[FIREBASE ERROR] Ne mogu da učitam config:', e);
-        return {};
+        console.error('[SQLITE ERROR] Ne mogu da učitam config:', e);
+        return { channelId: null, messageId: null };
     }
 }
 
-// Funkcija za čuvanje configa u Firestore
+// Funkcija za čuvanje configa u SQLite
 async function saveLeaderboardConfig(config) {
-    if (!db) return;
     try {
-        await db.collection('badges_system').doc('config').set(config, { merge: true });
+        const insertStmt = db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)');
+        
+        db.transaction(() => {
+            if (config.channelId) insertStmt.run('leaderboard_channel_id', config.channelId);
+            if (config.messageId) insertStmt.run('leaderboard_message_id', config.messageId);
+        })();
     } catch (e) {
-        console.error('[FIREBASE ERROR] Ne mogu da sačuvam config:', e);
+        console.error('[SQLITE ERROR] Ne mogu da sačuvam config:', e);
     }
 }
 
@@ -101,7 +108,7 @@ function buildLeaderboardEmbed(badges) {
         .addFields(
             { name: '📊 Statistika', value: `> Ukupno aktivnih znački: **${totalBadges}**\n> Sledeći slobodan broj: **#${getNextFree(badges)}**`, inline: false }
         )
-        .setFooter({ text: 'LSPD Automatski Sistem • Ažurira se automatski pri svakoj promeni' })
+        .setFooter({ text: 'LSPD Automatski Sistem • Baza: Lokalna (SQLite)' })
         .setTimestamp();
 
     return embed;
@@ -115,8 +122,6 @@ function getNextFree(badges) {
 
 /**
  * Ažurira leaderboard poruku u kanalu.
- * Ako poruka ne postoji, šalje novu i čuva njen ID.
- * @param {Client} client - Discord.js Client instanca
  */
 async function updateLeaderboard(client) {
     const config = await loadLeaderboardConfig();
@@ -138,7 +143,6 @@ async function updateLeaderboard(client) {
         const badges = await loadBadges();
         const embed = buildLeaderboardEmbed(badges);
 
-        // Pokušaj da obrišeš postojeću poruku da bi nova bila na dnu
         if (messageId) {
             try {
                 const existingMsg = await channel.messages.fetch(messageId);
@@ -148,7 +152,6 @@ async function updateLeaderboard(client) {
             }
         }
 
-        // Šalji novu poruku
         const newMsg = await channel.send({ embeds: [embed] });
         config.messageId = newMsg.id;
         await saveLeaderboardConfig(config);
@@ -161,8 +164,6 @@ async function updateLeaderboard(client) {
 
 /**
  * Inicijalno postavljanje leaderboarda u kanal
- * @param {TextChannel} channel - Kanal u koji se postavlja
- * @param {Client} client - Discord.js Client instanca
  */
 async function setupLeaderboard(channel, client) {
     const badges = await loadBadges();
