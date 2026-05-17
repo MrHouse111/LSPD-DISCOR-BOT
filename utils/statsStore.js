@@ -77,6 +77,15 @@ module.exports = {
         }
     },
 
+    addDutyCancellation: async (userId, username) => {
+        try {
+            db.prepare('INSERT OR IGNORE INTO stats (user_id, username) VALUES (?, ?)').run(userId, username);
+            db.prepare('UPDATE stats SET duty_cancellations = duty_cancellations + 1, username = ? WHERE user_id = ?').run(username, userId);
+        } catch (e) {
+            console.error('[SQLITE ERROR] addDutyCancellation:', e);
+        }
+    },
+
     getUserStats: async (userId) => {
         try {
             const row = db.prepare('SELECT * FROM stats WHERE user_id = ?').get(userId);
@@ -88,7 +97,8 @@ module.exports = {
                 duty: JSON.parse(row.duty || '{}'),
                 pluses: row.pluses,
                 minuses: row.minuses,
-                otkazi: row.otkazi
+                otkazi: row.otkazi,
+                duty_cancellations: row.duty_cancellations || 0
             };
         } catch (e) {
             console.error('[SQLITE ERROR] getUserStats:', e);
@@ -108,7 +118,8 @@ module.exports = {
                     duty: JSON.parse(row.duty || '{}'),
                     pluses: row.pluses,
                     minuses: row.minuses,
-                    otkazi: row.otkazi
+                    otkazi: row.otkazi,
+                    duty_cancellations: row.duty_cancellations || 0
                 };
             }
             return users;

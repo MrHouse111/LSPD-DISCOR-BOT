@@ -246,6 +246,14 @@ module.exports = {
 
             // Odsustvo - Odobravanje / Odbijanje
             else if (customId.startsWith('odsustvo_odobri_') || customId.startsWith('odsustvo_odbij_')) {
+                const { PermissionFlagsBits } = require('discord.js');
+                const isNacelnik = interaction.member.roles.cache.some(role => role.name === '👮NACELNIK👮' || role.name.toLowerCase() === 'director' || role.name.toLowerCase() === 'zamenik nacelnika');
+                const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
+                
+                if (!isNacelnik && !isAdmin) {
+                    return interaction.reply({ content: '❌ Nemate dozvolu! Samo Načelnici mogu odobriti ili odbiti odsustvo.', ephemeral: true });
+                }
+
                 const isApproved = customId.startsWith('odsustvo_odobri_');
                 const targetUserId = customId.replace('odsustvo_odobri_', '').replace('odsustvo_odbij_', '');
 

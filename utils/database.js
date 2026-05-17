@@ -45,6 +45,12 @@ function initDB() {
             otkazi INTEGER DEFAULT 0
         )
     `).run();
+
+    try {
+        db.prepare('ALTER TABLE stats ADD COLUMN duty_cancellations INTEGER DEFAULT 0').run();
+    } catch (e) {
+        // Ignoriši grešku ako kolona već postoji
+    }
 }
 
 initDB();
