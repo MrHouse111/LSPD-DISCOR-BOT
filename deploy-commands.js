@@ -23,19 +23,28 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 	try {
 		console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
-        const { Client, GatewayIntentBits } = require('discord.js');
-        const tempClient = new Client({ intents: [GatewayIntentBits.Guilds] });
-        
-        await tempClient.login(process.env.DISCORD_TOKEN);
-        const clientId = tempClient.user.id;
-        
-		const data = await rest.put(
-			Routes.applicationCommands(clientId),
-			{ body: commands },
-		);
+		const { Client, GatewayIntentBits } = require('discord.js');
+		const tempClient = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-		console.log(`Successfully reloaded ${data.length} application (/) commands.`);
-        tempClient.destroy();
+		await tempClient.login(process.env.DISCORD_TOKEN);
+		const clientId = tempClient.user.id;
+
+		let data;
+		if (process.env.GUILD_ID) {
+			data = await rest.put(
+				Routes.applicationGuildCommands(clientId, process.env.GUILD_ID),
+				{ body: commands },
+			);
+			console.log(`Successfully reloaded ${data.length} guild (/) commands for GUILD_ID ${process.env.GUILD_ID}.`);
+		} else {
+			data = await rest.put(
+				Routes.applicationCommands(clientId),
+				{ body: commands },
+			);
+			console.log(`Successfully reloaded ${data.length} global application (/) commands.`);
+		}
+
+		tempClient.destroy();
 	} catch (error) {
 		console.error(error);
 	}

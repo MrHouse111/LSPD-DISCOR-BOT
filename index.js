@@ -91,11 +91,19 @@ client.once('ready', async () => {
 
         if (commands.length > 0) {
             console.log(`Registering ${commands.length} application (/) commands...`);
-            await rest.put(
-                Routes.applicationCommands(client.user.id),
-                { body: commands },
-            );
-            console.log(`Successfully registered ${commands.length} application (/) commands.`);
+            if (process.env.GUILD_ID) {
+                await rest.put(
+                    Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID),
+                    { body: commands },
+                );
+                console.log(`Successfully registered ${commands.length} guild (/) commands for GUILD_ID ${process.env.GUILD_ID}.`);
+            } else {
+                await rest.put(
+                    Routes.applicationCommands(client.user.id),
+                    { body: commands },
+                );
+                console.log(`Successfully registered ${commands.length} global application (/) commands.`);
+            }
         }
     } catch (err) {
         console.error('[COMMAND REGISTRATION ERROR]', err);
