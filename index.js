@@ -1,8 +1,5 @@
-try {
-    require('dotenv').config();
-} catch (e) {
-    // dotenv not installed — continue and rely on existing environment variables
-}
+// Hard-coded token (replace with your bot token)
+const DISCORD_TOKEN = 'MTUwMjA5MzY1OTQxODUyOTg0Mg.GZggf5.UUvMMiYcqF_lF61Ljt28YX4JnnI6BzvrD54tK4';
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
@@ -194,5 +191,5 @@ client.once('ready', async () => {
     }, CHECK_INTERVAL_MS);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(DISCORD_TOKEN);
 
