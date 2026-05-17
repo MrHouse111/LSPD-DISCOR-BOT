@@ -21,7 +21,7 @@ for (const file of commandFiles) {
 	}
 }
 
-const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+const rest = new REST().setToken(process.env.DISCORD_TOKEN?.trim());
 
 (async () => {
 	try {
@@ -30,7 +30,7 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 		const { Client, GatewayIntentBits } = require('discord.js');
 		const tempClient = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-		await tempClient.login(process.env.DISCORD_TOKEN);
+		await tempClient.login(process.env.DISCORD_TOKEN?.trim());
 		const clientId = tempClient.user.id;
 
 		let data;

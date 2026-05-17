@@ -80,7 +80,7 @@ client.once('ready', async () => {
 
     // AUTOMATSKA REGISTRACIJA SLASH KOMANDI
     try {
-        const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+        const rest = new REST().setToken(process.env.DISCORD_TOKEN?.trim());
         const commands = [];
         const commandsPath = path.join(__dirname, 'commands');
         const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -194,5 +194,5 @@ client.once('ready', async () => {
     }, CHECK_INTERVAL_MS);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN?.trim());
 
