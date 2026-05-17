@@ -53,6 +53,8 @@ for (const file of commandFiles) {
     }
 }
 
+console.log('[COMMANDS LOADED]', Array.from(client.commands.keys()).join(', '));
+
 // Dynamically load events
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
