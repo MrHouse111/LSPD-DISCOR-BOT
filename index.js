@@ -1,4 +1,8 @@
-require('dotenv').config();
+try {
+    require('dotenv').config();
+} catch (e) {
+    // dotenv not installed — continue and rely on existing environment variables
+}
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');

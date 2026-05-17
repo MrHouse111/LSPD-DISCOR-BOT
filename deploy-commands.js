@@ -1,4 +1,8 @@
-require('dotenv').config();
+try {
+	require('dotenv').config();
+} catch (e) {
+	// dotenv not installed — continue and rely on existing environment variables
+}
 const { REST, Routes } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
