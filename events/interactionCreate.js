@@ -542,6 +542,18 @@ module.exports = {
 
             if (!command) {
                 console.error(`No command matching ${interaction.commandName} was found.`);
+                try {
+                    const loaded = interaction.client.commands ? Array.from(interaction.client.commands.keys()) : [];
+                    console.error('[DEBUG] interaction.client.commands present?', !!interaction.client.commands);
+                    console.error('[DEBUG] Loaded command keys:', loaded.join(', '));
+                    console.error('[DEBUG] Interaction details:', {
+                        commandName: interaction.commandName,
+                        user: interaction.user?.id,
+                        guildId: interaction.guildId,
+                    });
+                } catch (e) {
+                    console.error('[DEBUG] Failed to log debug info', e);
+                }
                 return;
             }
 
