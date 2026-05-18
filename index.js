@@ -8,7 +8,7 @@ const path = require('node:path');
 const express = require('express');
 const { Client, Collection, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes } = require('discord.js');
 const { Player } = require('discord-player');
-const { DefaultExtractors } = require('@discord-player/extractor');
+const { DefaultExtractors, BridgeProvider, BridgeSource } = require('@discord-player/extractor');
 
 // DUMMY SERVER ZA RENDER.COM
 const app = express();
@@ -35,30 +35,16 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Inicijalizacija YouTube Music Pleyera (sa opcionalnim Lavalink nodom)
-const lavalinkHost = process.env.LAVALINK_HOST;
-const lavalinkPort = process.env.LAVALINK_PORT ? parseInt(process.env.LAVALINK_PORT, 10) : undefined;
-const lavalinkPassword = process.env.LAVALINK_PASSWORD;
-const lavalinkSecure = process.env.LAVALINK_SECURE === 'true';
-
+// Inicijalizacija YouTube Music Pleyera koristeći BridgeProvider za zaobilaženje IP blokada
 const playerOptions = {};
-if (lavalinkHost && lavalinkPort && lavalinkPassword) {
-    playerOptions.nodes = [
-        {
-            host: lavalinkHost,
-            port: lavalinkPort,
-            password: lavalinkPassword,
-            identifier: 'LavalinkNode',
-            secure: lavalinkSecure,
-        }
-    ];
-    console.log('[PLAYER] Configured Lavalink node:', `${lavalinkHost}:${lavalinkPort}`);
-} else {
-    console.log('[PLAYER] No Lavalink config found in environment; using local voice playback.');
-}
-
 const player = new Player(client, playerOptions);
-player.extractors.loadMulti(DefaultExtractors);
+
+// BridgeProvider omogućava da pretražimo YouTube, a sam zvuk puštamo preko SoundCloud-a
+// Ovo potpuno eliminiše YouTube IP rate limits i banove sa servera
+player.extractors.loadMulti(DefaultExtractors, {
+    bridgeProvider: new BridgeProvider(BridgeSource.SoundCloud)
+});
+console.log('[PLAYER] Učitan BridgeProvider (YouTube -> SoundCloud fallback) za zaštitu od IP blokada.');
 
 // Dynamically load commands
 const commandsPath = path.join(__dirname, 'commands');
