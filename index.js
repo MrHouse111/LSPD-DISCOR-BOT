@@ -35,8 +35,29 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Inicijalizacija YouTube Music Pleyera
-const player = new Player(client);
+// Inicijalizacija YouTube Music Pleyera (sa opcionalnim Lavalink nodom)
+const lavalinkHost = process.env.LAVALINK_HOST;
+const lavalinkPort = process.env.LAVALINK_PORT ? parseInt(process.env.LAVALINK_PORT, 10) : undefined;
+const lavalinkPassword = process.env.LAVALINK_PASSWORD;
+const lavalinkSecure = process.env.LAVALINK_SECURE === 'true';
+
+const playerOptions = {};
+if (lavalinkHost && lavalinkPort && lavalinkPassword) {
+    playerOptions.nodes = [
+        {
+            host: lavalinkHost,
+            port: lavalinkPort,
+            password: lavalinkPassword,
+            identifier: 'LavalinkNode',
+            secure: lavalinkSecure,
+        }
+    ];
+    console.log('[PLAYER] Configured Lavalink node:', `${lavalinkHost}:${lavalinkPort}`);
+} else {
+    console.log('[PLAYER] No Lavalink config found in environment; using local voice playback.');
+}
+
+const player = new Player(client, playerOptions);
 player.extractors.loadMulti(DefaultExtractors);
 
 // Dynamically load commands
