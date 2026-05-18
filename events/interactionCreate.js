@@ -147,23 +147,36 @@ module.exports = {
                 try {
                     const { ChannelType, PermissionsBitField } = require('discord.js');
                     
+                    // Tražimo ulogu NACELNIK na serveru
+                    const nacelnikRole = interaction.guild.roles.cache.find(r => r.name.includes('NACELNIK'));
+                    
+                    const permissionOverwrites = [
+                        {
+                            id: interaction.guild.id, // @everyone role
+                            deny: [PermissionsBitField.Flags.ViewChannel],
+                        },
+                        {
+                            id: user.id, // The user who opened it
+                            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                        },
+                        {
+                            id: interaction.client.user.id, // The bot
+                            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                        }
+                    ];
+                    
+                    // Dodaj NACELNIK ulogu ako postoji
+                    if (nacelnikRole) {
+                        permissionOverwrites.push({
+                            id: nacelnikRole.id,
+                            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                        });
+                    }
+                    
                     const ticketChannel = await interaction.guild.channels.create({
                         name: channelName,
                         type: ChannelType.GuildText,
-                        permissionOverwrites: [
-                            {
-                                id: interaction.guild.id, // @everyone role
-                                deny: [PermissionsBitField.Flags.ViewChannel],
-                            },
-                            {
-                                id: user.id, // The user who opened it
-                                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
-                            },
-                            {
-                                id: interaction.client.user.id, // The bot
-                                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
-                            }
-                        ],
+                        permissionOverwrites: permissionOverwrites,
                     });
 
                     const ticketEmbed = new EmbedBuilder()
@@ -523,6 +536,30 @@ module.exports = {
                     const odsustvoChannel = await interaction.client.channels.fetch(ODSUSTVO_CHANNEL_ID);
                     if (odsustvoChannel) {
                         await odsustvoChannel.send({ embeds: [odsustvoEmbed], components: [approveRow] });
+                        
+                        // Pomeranje panela na dno
+                        const messages = await odsustvoChannel.messages.fetch({ limit: 20 });
+                        const stariPanel = messages.find(m => m.components.length > 0 && m.components[0].components[0].customId === 'odsustvo_btn');
+                        if (stariPanel) {
+                            await stariPanel.delete().catch(() => {});
+                            
+                            const panelEmbed = new EmbedBuilder()
+                                .setColor('#f1c40f')
+                                .setTitle('LSPD - Prijava Odsustva')
+                                .setDescription('Ukoliko ste sprečeni da prisustvujete dužnosti ili sastanku, kliknite na dugme ispod kako biste popunili formular za odsustvo.\n\nSvako neopravdano odsustvo duže od 48h rezultiraće otkazom.')
+                                .setTimestamp()
+                                .setFooter({ text: 'LSPD High Command' });
+                    
+                            const panelRow = new ActionRowBuilder()
+                                .addComponents(
+                                    new ButtonBuilder()
+                                        .setCustomId('odsustvo_btn')
+                                        .setLabel('📝 Prijavi Odsustvo')
+                                        .setStyle(ButtonStyle.Primary)
+                                );
+                                
+                            await odsustvoChannel.send({ embeds: [panelEmbed], components: [panelRow] });
+                        }
                     }
                 } catch (e) {
                     console.warn('[ODSUSTVO] Nije moguće poslati u odsustvo kanal:', e.message);

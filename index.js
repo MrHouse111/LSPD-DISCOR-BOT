@@ -215,5 +215,8 @@ client.once('ready', async () => {
     }, CHECK_INTERVAL_MS);
 });
 
-client.login(process.env.DISCORD_TOKEN?.trim());
+    console.log(`[DEBUG] Token type: ${typeof process.env.DISCORD_TOKEN}`);
+    console.log(`[DEBUG] Token length: ${process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.length : 0}`);
+    console.log(`[DEBUG] Token start: ${process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.substring(0, 10) : 'none'}...`);
 
+    client.login(process.env.DISCORD_TOKEN?.trim());
