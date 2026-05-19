@@ -51,6 +51,30 @@ function initDB() {
     } catch (e) {
         // Ignoriši grešku ako kolona već postoji
     }
+
+    // Zaštitni sistem: Automatsko obnavljanje 33 početne značke ukoliko je baza prazna (nakon restarta/brisanja fajla)
+    const badgeCount = db.prepare('SELECT COUNT(*) as count FROM badges').get().count;
+    if (badgeCount === 0) {
+        const defaultBadges = [
+            "706638651899248691", "1214015596811780137", "759857240214863952", "1349823084403621980", 
+            "1153631574210912356", "796079568784064562", "1294308142946979885", "1340094745111957526", 
+            "447660960228835330", "1413806980467916893", "1309920013838192681", "1340419848986951742", 
+            "1270529269411610676", "1493959146909859992", "1372999484237287524", "1233046667842945076", 
+            "1322243456717815814", "1164872816890495087", "713009414231031888", "566263172722327572", 
+            "764510136999870494", "1474500772413837362", "915212693156290560", "919284383721091173", 
+            "1039641018338902036", "1479110612905758863", "919528800813973604", "1045081148134539395", 
+            "417406507475402770", "1198300083276496962", "702263553301807206", "1273606049949028393", 
+            "1246858089521483807"
+        ];
+        const insertStmt = db.prepare('INSERT INTO badges (badge_number, discord_id) VALUES (?, ?)');
+        const transaction = db.transaction(() => {
+            defaultBadges.forEach((id, index) => {
+                insertStmt.run(index + 1, id);
+            });
+        });
+        transaction();
+        console.log('[ZAŠTITNI SISTEM] Baza znački je bila prazna. Uspešno upisane 33 stare značke u memoriju.');
+    }
 }
 
 initDB();
